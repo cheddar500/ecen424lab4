@@ -1,0 +1,89 @@
+Example:
+# Execution begins at address 0
+        .pos 0   
+        irmovq  Stack, %rsp     # Set up stack pointer
+        call main
+        halt                    # Terminate program
+
+
+# Sample linked list
+.align 8
+ele1:
+        .quad 0x00a
+        .quad ele2
+ele2:
+        .quad 0x0b0
+        .quad ele3
+ele3:
+        .quad 0xc00
+        .quad 0
+
+main:
+        irmovq  ele1, %rdi
+        call    sum_list      
+        ret
+
+           
+sum_list:   
+            irmovq $0, %rax
+            jmp L2
+L3:
+            mrmovq (%rdi), %rsi
+            addq %rsi, %rax
+            mrmovq 8(%rdi), %rdi
+L2:
+            irmovq $0, %r9
+            subq %rdi, %r9
+            jne L3
+            ret
+
+# The stack starts here and grows to lower addresses
+        .pos 0x100
+Stack:
+
+
+
+
+
+
+# Chet Taylor   netID: tchested
+# 24 Feb 2021
+# sim 
+
+# Execution begins at address 0
+        .pos 0
+init:   
+        irmovq  Stack, %rsp     # Set up stack pointer
+        irmovq  ele1, %rdi
+        call    sum_list        # Execute main program
+        halt                    # Terminate program
+
+
+# Sample linked list
+.align 8
+ele1:
+        .quad 0x00a
+        .quad ele2
+ele2:
+        .quad 0x0b0
+        .quad ele3
+ele3:
+        .quad 0xc00
+        .quad 0
+
+
+sum_list:   
+            irmovq $0, %rax
+            jmp L2
+L2:
+            andq %rdi, %rdi
+            je L4
+            addq %rdi, %rax
+            mrmovq 8(%rdi), %rdi
+            jmp L2
+L4:
+            ret
+
+# The stack starts here and grows to lower addresses
+        .pos 0x100
+Stack:

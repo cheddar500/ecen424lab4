@@ -1,0 +1,42 @@
+                            | # Chet Taylor   netID: tchested
+                            | # 24 Feb 2021
+                            | # sim 
+                            | 
+                            | # Execution begins at address 0
+0x000:                      |         .pos 0
+0x000:                      | init:   
+0x000: 30f40001000000000000 |         irmovq  Stack, %rsp     # Set up stack pointer
+0x00a: 30f72000000000000000 |         irmovq  ele1, %rdi
+0x014: 805000000000000000   |         call    sum_list        # Execute main program
+0x01d: 00                   |         halt                    # Terminate program
+                            | 
+                            | 
+                            | # Sample linked list
+0x020:                      | .align 8
+0x020:                      | ele1:
+0x020: 0a00000000000000     |         .quad 0x00a
+0x028: 3000000000000000     |         .quad ele2
+0x030:                      | ele2:
+0x030: b000000000000000     |         .quad 0x0b0
+0x038: 4000000000000000     |         .quad ele3
+0x040:                      | ele3:
+0x040: 000c000000000000     |         .quad 0xc00
+0x048: 0000000000000000     |         .quad 0
+                            | 
+                            | 
+0x050:                      | sum_list:   
+0x050: 30f00000000000000000 |             irmovq $0, %rax
+0x05a: 706300000000000000   |             jmp L2
+0x063:                      | L2:
+0x063: 6277                 |             andq %rdi, %rdi
+0x065: 738d00000000000000   |             je L4
+0x06e: 50670000000000000000 |             mrmovq (%rdi), %rsi
+0x078: 6060                 |             addq %rsi, %rax
+0x07a: 50770800000000000000 |             mrmovq 8(%rdi), %rdi
+0x084: 706300000000000000   |             jmp L2
+0x08d:                      | L4:
+0x08d: 90                   |             ret
+                            | 
+                            | # The stack starts here and grows to lower addresses
+0x100:                      |         .pos 0x100
+0x100:                      | Stack:

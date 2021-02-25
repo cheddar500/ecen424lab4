@@ -1,0 +1,54 @@
+                            | # Chet Taylor   netID: tchested
+                            | # 24 Feb 2021
+                            | # sim 
+                            | 
+                            | # Execution begins at address 0
+0x000:                      |         .pos 0
+0x000:                      | init:   
+0x000: 30f40001000000000000 |         irmovq  Stack, %rsp     # Set up stack pointer
+                            |         #pass in src, dest, len
+0x00a: 30f73800000000000000 |         irmovq  src, %rdi
+0x014: 30f65000000000000000 |         irmovq  dest, %rsi
+0x01e: 30f20300000000000000 |         irmovq  $3, %rdx
+0x028: 806800000000000000   |         call    copy_block        # Execute main program
+0x031: 00                   |         halt                    # Terminate program
+                            | 
+                            | 
+0x038:                      | .align 8
+                            | # Source block
+0x038:                      | src:
+0x038: 0a00000000000000     | .quad 0x00a
+0x040: b000000000000000     | .quad 0x0b0
+0x048: 000c000000000000     | .quad 0xc00
+                            | # Destination block
+0x050:                      | dest:
+0x050: 1101000000000000     | .quad 0x111
+0x058: 2202000000000000     | .quad 0x222
+0x060: 3303000000000000     | .quad 0x333
+                            | 
+                            | 
+                            | 
+0x068:                      | copy_block:
+0x068: 30f10000000000000000 |             irmovq $0, %rcx
+0x072:                      | L13:
+0x072: 6222                 |             andq %rdx, %rdx
+0x074: 71b600000000000000   |             jle L15
+0x07d: 50070000000000000000 |             mrmovq (%rdi), %rax
+0x087: 40060000000000000000 |             rmmovq %rax, (%rsi)
+0x091: 6301                 |             xorq %rax, %rcx 
+0x093: 30f80100000000000000 |             irmovq $1, %r8
+0x09d: 6182                 |             subq %r8, %rdx
+                            |             # leaq	8(%rsi), %rsi
+0x09f: 30f90800000000000000 |             irmovq $8, %r9
+0x0a9: 6096                 |             addq %r9, %rsi
+                            |             # leaq	8(%rdi), %rdi
+0x0ab: 6097                 |             addq %r9, %rdi
+0x0ad: 707200000000000000   |             jmp L13
+0x0b6:                      | L15: 
+0x0b6: 2010                 |             rrmovq %rcx, %rax
+0x0b8: 90                   |             ret 
+                            | 
+                            | 
+                            | # The stack starts here and grows to lower addresses
+0x100:                      |         .pos 0x100
+0x100:                      | Stack:
