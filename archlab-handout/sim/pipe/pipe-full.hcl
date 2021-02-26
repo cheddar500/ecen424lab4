@@ -2,7 +2,30 @@
 # • Your name and ID.
 #   - Chet Taylor, tchested
 # • A high level description of my code telling how and why:
-#   - 
+#   - I added iaddq to help reduce multiple instruction use to
+#     a single isntruction in ncopy.ys. It was a very similar 
+#     implementation to part 2 of this lab:
+#   - iaddq: an instruction that adds a constant value to a register. Let’s 
+#            look at the various operations over the six stages needed to implement it. 
+#     1. Fetch: Program Counter (PC) is used to fetch the instruction from 
+#               memory because it contains the instruction address
+#             icode:ifun = M1[PC]; //instruction type is specified
+#             rA:rB = M1[PC+1];    //register specifier byte is fetched
+#             valC = M8[PC+2];     //an 8 byte constant value is fetched
+#             valP = PC + 10;        //get the length of the instruction plus PC value
+#     2. Decode: stage is used to read operand from rB register to valB
+#             valB = R[rB]
+#     3. Execute: here need to perform addition using the ALU through the ifun command 
+#                 and put the result in valE. Set the condition code (CC).
+#             valE = valB + valC;
+#             set cc
+#     4. Memory: since there is no need to access memory here, just registers 
+#                and constant values, there is no need to use operations
+#     5. Write-back: now we have the value in valE, need to store it in register file R[rB]
+#             R[rB] = valE
+#     6. PC Update: PC is updated to fetch next instruction
+#             PC = valP
+
 
 #/* $begin pipe-all-hcl */
 ####################################################################
@@ -164,7 +187,7 @@ word f_ifun = [
 # Is instruction valid?
 bool instr_valid = f_icode in 
 	{ INOP, IHALT, IRRMOVQ, IIRMOVQ, IRMMOVQ, IMRMOVQ,
-	  IOPQ, IJXX, ICALL, IRET, IPUSHQ, IPOPQ };
+	  IOPQ, IJXX, ICALL, IRET, IPUSHQ, IPOPQ, IIADDQ };
 
 # Determine status code for fetched instruction
 word f_stat = [
@@ -177,11 +200,11 @@ word f_stat = [
 # Does fetched instruction require a regid byte?
 bool need_regids =
 	f_icode in { IRRMOVQ, IOPQ, IPUSHQ, IPOPQ, 
-		     IIRMOVQ, IRMMOVQ, IMRMOVQ };
+		     IIRMOVQ, IRMMOVQ, IMRMOVQ, IIADDQ };
 
 # Does fetched instruction require a constant word?
 bool need_valC =
-	f_icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IJXX, ICALL };
+	f_icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IJXX, ICALL, IIADDQ };
 
 # Predict next value of PC
 word f_predPC = [
@@ -201,14 +224,14 @@ word d_srcA = [
 
 ## What register should be used as the B source?
 word d_srcB = [
-	D_icode in { IOPQ, IRMMOVQ, IMRMOVQ  } : D_rB;
+	D_icode in { IOPQ, IRMMOVQ, IMRMOVQ, IIADDQ  } : D_rB;
 	D_icode in { IPUSHQ, IPOPQ, ICALL, IRET } : RRSP;
 	1 : RNONE;  # Don't need register
 ];
 
 ## What register should be used as the E destination?
 word d_dstE = [
-	D_icode in { IRRMOVQ, IIRMOVQ, IOPQ} : D_rB;
+	D_icode in { IRRMOVQ, IIRMOVQ, IOPQ, IIADDQ} : D_rB;
 	D_icode in { IPUSHQ, IPOPQ, ICALL, IRET } : RRSP;
 	1 : RNONE;  # Don't write any register
 ];
@@ -245,7 +268,7 @@ word d_valB = [
 ## Select input A to ALU
 word aluA = [
 	E_icode in { IRRMOVQ, IOPQ } : E_valA;
-	E_icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ } : E_valC;
+	E_icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IIADDQ } : E_valC;
 	E_icode in { ICALL, IPUSHQ } : -8;
 	E_icode in { IRET, IPOPQ } : 8;
 	# Other instructions don't need ALU
@@ -254,7 +277,7 @@ word aluA = [
 ## Select input B to ALU
 word aluB = [
 	E_icode in { IRMMOVQ, IMRMOVQ, IOPQ, ICALL, 
-		     IPUSHQ, IRET, IPOPQ } : E_valB;
+		     IPUSHQ, IRET, IPOPQ, IIADDQ } : E_valB;
 	E_icode in { IRRMOVQ, IIRMOVQ } : 0;
 	# Other instructions don't need ALU
 ];
@@ -266,7 +289,7 @@ word alufun = [
 ];
 
 ## Should the condition codes be updated?
-bool set_cc = E_icode == IOPQ &&
+bool set_cc = E_icode in {IOPQ, IIADDQ} &&
 	# State changes only during normal operation
 	!m_stat in { SADR, SINS, SHLT } && !W_stat in { SADR, SINS, SHLT };
 

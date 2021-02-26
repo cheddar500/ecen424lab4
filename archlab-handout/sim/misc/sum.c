@@ -5,6 +5,10 @@
 // ./yis sum.yo
 // bash handin_archlab.sh to
 // collect/pack solution files
+// git add archlab-handout
+// git commit -m "message"
+// git push -u origin main
+//
 
 /* linked list element */
 typedef struct ELE {

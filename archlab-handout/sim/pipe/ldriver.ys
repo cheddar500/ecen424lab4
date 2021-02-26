@@ -11,13 +11,21 @@ main:	irmovq Stack, %rsp  	# Set up stack pointer
 	call ncopy		 
 	halt			# should halt with num nonzeros in %rax
 StartFun:
+# Header
+# • Your name and ID.
+#   - Chet Taylor, tchested
+# • A high level description of my code telling how and why:
+#   - I rolled out the loop to reduce loop overhead
+#   - I added iaddq to eliminate the need to store immediates in 
+#     registers before using them
+
 #/* $begin ncopy-ys */
 ##################################################################
 # ncopy.ys - Copy a src block of len words to dst.
 # Return the number of positive words (>0) contained in src.
 #
 # Include your name and ID here.
-#
+# Chet Taylor, tchested
 # Describe how and why you modified the baseline code.
 #
 ##################################################################
@@ -28,24 +36,115 @@ ncopy:
 
 ##################################################################
 # You can modify this portion
-	# Loop header
-	xorq %rax,%rax		# count = 0;
-	andq %rdx,%rdx		# len <= 0?
-	jle Done		# if so, goto Done:
 
-Loop:	mrmovq (%rdi), %r10	# read val from src...
-	rmmovq %r10, (%rsi)	# ...and store it to dst
-	andq %r10, %r10		# val <= 0?
-	jle Npos		# if so, goto Npos:
-	irmovq $1, %r10
-	addq %r10, %rax		# count++
-Npos:	irmovq $1, %r10
-	subq %r10, %rdx		# len--
-	irmovq $8, %r10
-	addq %r10, %rdi		# src++
-	addq %r10, %rsi		# dst++
-	andq %rdx,%rdx		# len > 0?
-	jg Loop			# if so, goto Loop:
+#rax count
+#rdi src
+#rsi dst
+#rdx len
+#rcx i
+#r8 
+#r9
+#r10 
+#r11 
+#rbx
+#r12
+#r13
+#r14  
+
+	# Loop header
+	irmovq $0,%rax		# count = 0;
+	irmovq $0,%rcx      # i = 0;
+	andq %rdx,%rdx		# len <= 0?Done:Loop1
+	#check if divisble by 4
+	rrmovq %rdx, %r8  #len to r8
+	subq %rcx,%r8     #len-=i   
+	iaddq $-4,%r8  #r8-4
+	jl Loop2
+	
+
+##################################################################
+Loop1:  # unroll by factor of 3
+    #for(i=0;i+k-1<n;i+=k) -> k=4
+	#for(i=0;i+3<len;i+=4)
+
+    #x[i] = x[i] + s
+	mrmovq (%rdi), %r8	# read val from src...
+	mrmovq 8(%rdi), %r9	# read val from src...
+	mrmovq 16(%rdi), %r10	# read val from src...
+	mrmovq 24(%rdi), %r11	# read val from src...
+	rmmovq %r8, (%rsi)	# ...and store it to dst
+	rmmovq %r9, 8(%rsi)	# ...and store it to dst
+	rmmovq %r10, 16(%rsi)	# ...and store it to dst
+	rmmovq %r11, 24(%rsi)	# ...and store it to dst
+
+	andq %r8, %r8		# val <= 0?count++:skip
+	jle Subloop1		# if so, goto Subloop1:
+	iaddq $1, %rax		#count++
+
+
+Subloop1:
+	#x[i+1] = x[i+1] + s
+	andq %r9, %r9		# val <= 0?count++:skip
+	jle Subloop2		# if so, goto Subloop2:
+	iaddq $1, %rax		#count++
+
+
+Subloop2:
+	#x[i+2] = x[i+2] + s
+	andq %r10, %r10		# val <= 0?count++:skip
+	jle Subloop3		    # if so, goto Subloop3:  
+	iaddq $1, %rax		#count++
+
+Subloop3:
+	#x[i+3] = x[i+3] + s
+	andq %r11, %r11		# val <= 0?count++:skip
+	jle Npos		    # if so, goto Npos:  
+	iaddq $1, %rax		#count++
+
+Npos:	
+	# dont need to subtract anymore, now compare with i
+	iaddq $32, %rdi		# src++
+	iaddq $32, %rsi		# dst++
+
+	
+	#execute the increment step: i+=4
+	iaddq $4,%rcx 
+
+	# i + k - 1 = i + 3 < len b/c k = 4
+	#test the condition: i+3<len 
+	rrmovq %rcx,%r12   #copy i to r12
+	iaddq $3, %r12     #add 3 to i copy 
+	rrmovq %rdx,%r13  #copy len to r13
+	subq %r12,%r13     #len-(i+3) copies
+	jg Loop1			# if so, goto Loop1:
+
+
+##################################################################
+Loop2: # the og loop
+    #for(/*empty*/;i<len;i++)
+
+	#check if done or not i>=len
+	rrmovq %rcx, %r11  #i to r11
+	rrmovq %rdx, %r12  #len to r12
+	subq %r12,%r11
+	jge Done
+
+
+	mrmovq (%rdi), %r8   # read val from src...
+	rmmovq %r8, (%rsi)   # ...and store it to dst
+	andq %r8, %r8        # val <= 0?count++:skip
+	jle Npos2            # if so, goto Npos:
+	iaddq $1, %rax      # count++
+Npos2: 
+	# dont need to subtract anymore, now compare with i
+	iaddq $8, %rdi # src++
+	iaddq $8, %rsi # dst++
+
+	iaddq $1,%rcx #i++
+	jmp Loop2 # jg if so, goto Loop:
+
+
+
 ##################################################################
 # Do not modify the following section of code
 # Function epilogue.
@@ -65,66 +164,66 @@ src:
 	.quad 1
 	.quad -2
 	.quad -3
-	.quad 4
-	.quad 5
+	.quad -4
+	.quad -5
 	.quad 6
 	.quad 7
-	.quad -8
+	.quad 8
 	.quad 9
-	.quad 10
+	.quad -10
 	.quad 11
 	.quad 12
 	.quad -13
-	.quad 14
+	.quad -14
 	.quad -15
-	.quad -16
+	.quad 16
 	.quad 17
-	.quad -18
+	.quad 18
 	.quad -19
-	.quad 20
-	.quad -21
+	.quad -20
+	.quad 21
 	.quad -22
 	.quad -23
 	.quad -24
 	.quad 25
-	.quad 26
-	.quad 27
+	.quad -26
+	.quad -27
 	.quad 28
-	.quad -29
-	.quad -30
-	.quad -31
+	.quad 29
+	.quad 30
+	.quad 31
 	.quad 32
 	.quad 33
-	.quad 34
+	.quad -34
 	.quad 35
 	.quad -36
 	.quad 37
-	.quad -38
+	.quad 38
 	.quad 39
-	.quad -40
-	.quad 41
-	.quad -42
-	.quad -43
+	.quad 40
+	.quad -41
+	.quad 42
+	.quad 43
 	.quad -44
 	.quad 45
 	.quad 46
 	.quad -47
 	.quad -48
-	.quad 49
+	.quad -49
 	.quad -50
 	.quad 51
-	.quad -52
+	.quad 52
 	.quad -53
-	.quad -54
-	.quad -55
-	.quad 56
+	.quad 54
+	.quad 55
+	.quad -56
 	.quad -57
-	.quad 58
-	.quad 59
+	.quad -58
+	.quad -59
 	.quad -60
 	.quad -61
 	.quad -62
-	.quad 63
+	.quad -63
 	.quad 0xbcdefa # This shouldn't get moved
 
 	.align 16
